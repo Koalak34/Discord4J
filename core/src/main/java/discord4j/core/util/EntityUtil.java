@@ -16,10 +16,16 @@
  */
 package discord4j.core.util;
 
+import discord4j.common.json.response.AuditLogChangeResponse;
 import discord4j.common.json.response.ChannelResponse;
 import discord4j.core.ServiceMediator;
+import discord4j.core.object.audit.AuditLogChange;
 import discord4j.core.object.entity.*;
 import discord4j.core.object.entity.bean.*;
+
+import java.util.Map;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 /** An utility class for entity processing. */
 public final class EntityUtil {
