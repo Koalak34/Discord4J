@@ -44,6 +44,10 @@ public class IdentifyOptions {
         this.shard = shard;
     }
 
+    public void setShard(int index, int count) {
+        this.shard = new int[]{index, count};
+    }
+
     @Nullable
     public StatusUpdate getInitialStatus() {
         return initialStatus;

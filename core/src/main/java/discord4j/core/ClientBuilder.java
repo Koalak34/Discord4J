@@ -22,10 +22,10 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import discord4j.common.jackson.PossibleModule;
-import discord4j.common.json.payload.dispatch.Dispatch;
+import discord4j.core.connect.DefaultGatewayStrategy;
+import discord4j.core.connect.GatewayStrategy;
 import discord4j.core.event.EventDispatcher;
 import discord4j.core.event.dispatch.DispatchContext;
-import discord4j.core.event.dispatch.DispatchHandlers;
 import discord4j.core.event.domain.Event;
 import discord4j.gateway.GatewayClient;
 import discord4j.gateway.IdentifyOptions;
@@ -50,19 +50,21 @@ import java.util.Objects;
 public final class ClientBuilder {
 
     private String token;
-    private int shardIndex;
-    private int shardCount;
     private StoreService storeService;
     private FluxProcessor<Event, Event> eventProcessor;
     private Scheduler eventScheduler;
+    private RetryOptions retryOptions;
+    private IdentifyOptions identifyOptions;
+    private GatewayStrategy gatewayStrategy;
 
     public ClientBuilder(final String token) {
         this.token = Objects.requireNonNull(token);
-        shardIndex = 0;
-        shardCount = 1;
-        storeService = new StoreServiceLoader().getStoreService();
-        eventProcessor = EmitterProcessor.create(false);
-        eventScheduler = Schedulers.elastic();
+        this.storeService = new StoreServiceLoader().getStoreService();
+        this.eventProcessor = EmitterProcessor.create(false);
+        this.eventScheduler = Schedulers.elastic();
+        this.retryOptions = new RetryOptions(Duration.ofSeconds(2), Duration.ofSeconds(120), Integer.MAX_VALUE);
+        this.identifyOptions = new IdentifyOptions();
+        this.gatewayStrategy = new DefaultGatewayStrategy();
     }
 
     public String getToken() {
@@ -71,24 +73,6 @@ public final class ClientBuilder {
 
     public ClientBuilder setToken(final String token) {
         this.token = Objects.requireNonNull(token);
-        return this;
-    }
-
-    public int getShardIndex() {
-        return shardIndex;
-    }
-
-    public ClientBuilder setShardIndex(final int shardIndex) {
-        this.shardIndex = shardIndex;
-        return this;
-    }
-
-    public int getShardCount() {
-        return shardCount;
-    }
-
-    public ClientBuilder setShardCount(final int shardCount) {
-        this.shardCount = shardCount;
         return this;
     }
 
@@ -119,6 +103,30 @@ public final class ClientBuilder {
         return this;
     }
 
+    public RetryOptions getRetryOptions() {
+        return retryOptions;
+    }
+
+    public void setRetryOptions(RetryOptions retryOptions) {
+        this.retryOptions = retryOptions;
+    }
+
+    public IdentifyOptions getIdentifyOptions() {
+        return identifyOptions;
+    }
+
+    public void setIdentifyOptions(IdentifyOptions identifyOptions) {
+        this.identifyOptions = identifyOptions;
+    }
+
+    public GatewayStrategy getGatewayStrategy() {
+        return gatewayStrategy;
+    }
+
+    public void setGatewayStrategy(GatewayStrategy gatewayStrategy) {
+        this.gatewayStrategy = gatewayStrategy;
+    }
+
     public DiscordClient build() {
         final ObjectMapper mapper = new ObjectMapper()
                 .setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY)
@@ -137,24 +145,21 @@ public final class ClientBuilder {
                 .baseUrl(Routes.BASE_URL)
                 .build();
 
-        // TODO custom retry parameters
-        // TODO shard setup
-        // TODO initial status
         final GatewayClient gatewayClient = new GatewayClient(
                 new JacksonPayloadReader(mapper), new JacksonPayloadWriter(mapper),
-                new RetryOptions(Duration.ofSeconds(5), Duration.ofSeconds(120)), token, new IdentifyOptions());
+                retryOptions, token, identifyOptions);
 
         final StoreHolder storeHolder = new StoreHolder(storeService);
         final RestClient restClient = new RestClient(new Router(httpClient));
-        final ClientConfig config = new ClientConfig(token, shardIndex, shardCount);
+        final ClientConfig config = new ClientConfig(token, identifyOptions);
         final EventDispatcher eventDispatcher = new EventDispatcher(eventProcessor, eventScheduler);
 
         final ServiceMediator serviceMediator = new ServiceMediator(gatewayClient, restClient, storeHolder,
                 eventDispatcher, config);
 
-        serviceMediator.getGatewayClient().dispatch()
+        gatewayStrategy.dispatchSource(serviceMediator.getGatewayClient())
                 .map(dispatch -> DispatchContext.of(dispatch, serviceMediator))
-                .flatMap(DispatchHandlers::<Dispatch, Event>handle)
+                .flatMap(gatewayStrategy.eventMapper())
                 .subscribeWith(eventProcessor);
 
         return serviceMediator.getClient();

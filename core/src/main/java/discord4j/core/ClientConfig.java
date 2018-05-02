@@ -16,27 +16,23 @@
  */
 package discord4j.core;
 
+import discord4j.gateway.IdentifyOptions;
+
 public final class ClientConfig {
 
     private final String token;
-    private final int shardIndex;
-    private final int shardCount;
+    private final IdentifyOptions identifyOptions;
 
-    ClientConfig(final String token, final int shardIndex, final int shardCount) {
+    ClientConfig(final String token, final IdentifyOptions identifyOptions) {
         this.token = token;
-        this.shardIndex = shardIndex;
-        this.shardCount = shardCount;
+        this.identifyOptions = identifyOptions;
     }
 
     public String getToken() {
         return token;
     }
 
-    public int getShardIndex() {
-        return shardIndex;
-    }
-
-    public int getShardCount() {
-        return shardCount;
+    public IdentifyOptions getIdentifyOptions() {
+        return identifyOptions;
     }
 }

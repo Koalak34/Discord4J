@@ -25,9 +25,9 @@ import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import discord4j.common.jackson.PossibleModule;
 import discord4j.common.json.payload.GatewayPayload;
 import discord4j.common.json.payload.dispatch.Dispatch;
+import discord4j.core.event.EventDispatcher;
 import discord4j.core.event.dispatch.DispatchContext;
 import discord4j.core.event.dispatch.DispatchHandlers;
-import discord4j.core.event.EventDispatcher;
 import discord4j.core.event.domain.Event;
 import discord4j.core.event.domain.lifecycle.*;
 import discord4j.core.event.domain.message.MessageCreateEvent;
@@ -171,11 +171,12 @@ public class RetryBotTest {
 
             StoreHolder storeHolder = new StoreHolder(new NoOpStoreService());
             RestClient restClient = new RestClient(new Router(httpClient));
-            ClientConfig config = new ClientConfig(token, shardId, shardCount);
+            ClientConfig config = new ClientConfig(token, options);
+            RetryOptions retry = new RetryOptions(Duration.ofSeconds(2), Duration.ofSeconds(120), Integer.MAX_VALUE);
 
             GatewayClient gatewayClient = new GatewayClient(
                     new JacksonPayloadReader(mapper), new JacksonPayloadWriter(mapper),
-                    new RetryOptions(Duration.ofSeconds(2), Duration.ofSeconds(120)), token, options);
+                    retry, token, options);
 
             EmitterProcessor<Event> eventProcessor = EmitterProcessor.create(false);
             eventDispatcher = new EventDispatcher(eventProcessor, Schedulers.elastic());

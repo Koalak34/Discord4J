@@ -16,7 +16,6 @@
  */
 package discord4j.core;
 
-import discord4j.common.json.payload.StatusUpdate;
 import discord4j.common.json.response.UserGuildResponse;
 import discord4j.core.event.EventDispatcher;
 import discord4j.core.object.entity.*;
@@ -283,10 +282,6 @@ public final class DiscordClient {
      * invoke {@link Mono#block()}.
      */
     public Mono<Void> login() {
-        final int[] shards = {getConfig().getShardIndex(), getConfig().getShardCount()};
-        // TODO Add initialStatusUpdate parameters in ClientConfig
-        final StatusUpdate statusUpdate = null;
-
         final Map<String, Object> parameters = new HashMap<>(3);
         parameters.put("compress", "zlib-stream");
         parameters.put("encoding", "json");
